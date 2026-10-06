@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Luxury Candle - Boutique & Assistant</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Luxury Candle">
+    <link rel="icon" href="icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1a1a1a;
+            --accent-gold: #d4a574;
+            --accent-rose: #c894a0;
+            --text-main: #f5f5f5;
+            --text-muted: #999999;
+            --border-color: rgba(212, 165, 116, 0.15);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            background: #151515;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        .status-bar {
+            padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #ccc;
+        }
+        #install-bar {
+            align-items: center; justify-content: space-between; gap: 10px;
+            background: rgba(212, 165, 116, 0.1);
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 14px; font-size: 11px; color: var(--accent-gold);
+        }
+        #install-btn {
+            flex-shrink: 0; cursor: pointer; font-size: 11px; font-weight: 600;
+            padding: 6px 12px; border-radius: 14px; border: none;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose));
+            color: #121212;
+        }
+        .header-title-zone { padding: 10px 20px 16px; border-bottom: 1px solid var(--border-color); }
+        .header-title-zone h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header-title-zone p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .content-area { flex: 1; overflow-y: auto; padding: 16px 20px calc(80px + env(safe-area-inset-bottom, 0px)); }
+        .tab-view { display: none; }
+        .tab-view.active { display: block; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .product-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 210px;
+        }
+        .product-badge { font-size: 10px; color: var(--accent-gold); text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
+        .product-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; line-height: 1.2; }
+        .product-scent { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+        .product-bottom {
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .product-price { font-size: 15px; font-weight: 700; color: var(--accent-gold); }
+        .btn-buy {
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose));
+            border: none;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .order-item {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .order-top { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .order-ref { font-weight: 700; color: var(--accent-gold); font-size: 14px; }
+        .order-pill {
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(212, 165, 116, 0.15);
+            color: var(--accent-gold);
+            font-weight: 600;
+        }
+        .order-date { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+        .order-total { font-size: 14px; font-weight: 700; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); }
+        .chat-container { display: flex; flex-direction: column; height: calc(100vh - 220px); height: calc(100dvh - 220px); }
+        .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
+        .chat-bubble { max-width: 82%; padding: 12px 16px; border-radius: 16px; font-size: 13px; line-height: 1.45; }
+        .chat-bubble.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose));
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-bubble.ai {
+            align-self: flex-start;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            color: #e5e5e5;
+            border-bottom-left-radius: 4px;
+        }
+        .chat-bar { display: flex; gap: 8px; margin-top: 12px; }
+        .chat-bar input {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 25px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+        }
+        .chat-bar button {
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose));
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .bottom-nav {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: calc(68px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-left: 10px;
+            padding-right: 10px;
+            z-index: 10;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 600;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 6px 12px;
+            transition: all 0.2s ease;
+        }
+        .nav-item svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .nav-item.active { color: var(--accent-gold); }
+        .product-img { width: 100%; height: 110px; object-fit: cover; border-radius: 10px; margin-bottom: 8px; background: #111; }
+        .admin-box { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+        .admin-box input { padding: 12px; background: #111; border: 1px solid var(--border-color); border-radius: 10px; color: #fff; font-size: 16px; }
+        .admin-box h3 { font-size: 14px; color: var(--accent-gold); }
+        .admin-btn { background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose)); border: none; color: #fff; font-weight: 700; padding: 12px; border-radius: 12px; font-size: 14px; cursor: pointer; }
+        .admin-status { font-size: 12px; color: var(--text-muted); min-height: 16px; }
+        .admin-preview { width: 100%; max-height: 180px; object-fit: cover; border-radius: 10px; display: none; }
+        .currency-select { background: var(--surface-color); color: var(--accent-gold); border: 1px solid var(--border-color); border-radius: 20px; padding: 4px 10px; font-size: 16px; font-weight: 600; outline: none; }
+        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .kpi { background: #111; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 8px; display: flex; flex-direction: column; gap: 4px; }
+        .kpi span { font-size: 10px; color: var(--text-muted); }
+        .kpi b { font-size: 12px; color: var(--accent-gold); word-break: break-word; }
+        .period-row { display: flex; gap: 8px; }
+        .period-btn { flex: 1; padding: 8px; background: #111; color: var(--text-muted); border: 1px solid var(--border-color); border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .period-btn.active { color: #fff; background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose)); border-color: transparent; }
+        .stat-row { display: grid; grid-template-columns: 90px 1fr 24px; gap: 8px; align-items: center; font-size: 12px; margin-bottom: 6px; }
+        .stat-bar { background: #111; border-radius: 6px; height: 10px; overflow: hidden; }
+        .stat-bar div { height: 100%; background: linear-gradient(90deg, var(--accent-gold), var(--accent-rose)); border-radius: 6px; }
+        .chart-empty { font-size: 12px; color: var(--text-muted); padding: 12px 0; }
+        .modal { position: absolute; inset: 0; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; padding: 20px; z-index: 20; }
+        .modal-box { width: 100%; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="status-bar">
+        <span>Luxury Candle</span>
+        <select id="currency-select" class="currency-select" onchange="changeCurrency(this.value)" aria-label="Devise">
+            <option value="XOF">FCFA</option>
+            <option value="EUR">€ EUR</option>
+            <option value="USD">$ USD</option>
+            <option value="GBP">£ GBP</option>
+            <option value="CAD">$ CAD</option>
+        </select>
+    </div>
+
+    <div id="offline-banner" style="display:none;background:#3a2a1a;color:var(--accent-gold);font-size:11px;text-align:center;padding:6px 10px;">Mode hors connexion : vos commandes seront envoyées dès le retour du réseau.</div>
+
+    <div id="install-bar" style="display:none;">
+        <span>Ajoutez Luxury Candle à votre écran d'accueil</span>
+        <button id="install-btn" type="button">Installer l'application</button>
+    </div>
+
+    <div class="header-title-zone">
+        <h1 id="screen-title">Galerie</h1>
+        <p id="screen-desc">Découvrez nos bougies d'exception</p>
+    </div>
+
+    <div class="content-area">
+        <div id="view-gallery" class="tab-view active">
+            <div id="gallery-container" class="product-grid"></div>
+        </div>
+
+        <div id="view-orders" class="tab-view">
+            <div id="orders-container"></div>
+        </div>
+
+        <div id="view-ai" class="tab-view">
+            <div class="chat-container">
+                <div class="chat-messages" id="chat-messages">
+                    <div class="chat-bubble ai">
+                        Bonjour ! Je suis votre conseiller parfum luxe. Décrivez-moi l'ambiance recherchée ou la pièce à parfumer pour vous guider.
+                    </div>
+                </div>
+                <div class="chat-bar">
+                    <input type="text" id="chat-input" placeholder="Posez votre question...">
+                    <button onclick="handleUserMessage()">➤</button>
+                </div>
+            </div>
+        </div>
+        <div id="view-admin" class="tab-view">
+            <div id="admin-login" class="admin-box">
+                <h3>Espace vendeur</h3>
+                <input type="email" id="adm-email" placeholder="E-mail">
+                <input type="password" id="adm-pass" placeholder="Mot de passe">
+                <button class="admin-btn" onclick="adminLogin()">Se connecter</button>
+                <div class="admin-status" id="adm-login-status"></div>
+            </div>
+            <div id="admin-dashboard" style="display:none; margin-bottom:14px">
+                <div class="admin-box">
+                    <h3>Tableau de bord des ventes</h3>
+                    <div class="period-row">
+                        <button class="period-btn" onclick="setPeriod(7, this)">7 jours</button>
+                        <button class="period-btn active" onclick="setPeriod(30, this)">30 jours</button>
+                        <button class="period-btn" onclick="setPeriod(0, this)">Tout</button>
+                    </div>
+                    <div class="kpi-grid">
+                        <div class="kpi"><span>Ventes</span><b id="kpi-ca">-</b></div>
+                        <div class="kpi"><span>Commandes</span><b id="kpi-n">-</b></div>
+                        <div class="kpi"><span>Panier moyen</span><b id="kpi-avg">-</b></div>
+                    </div>
+                    <h3>Ventes dans le temps</h3>
+                    <div id="chart-sales"></div>
+                    <h3>Commandes par statut</h3>
+                    <div id="chart-status"></div>
+                    <div class="admin-status" id="dash-note"></div>
+                    <button class="admin-btn" onclick="exportOrders()">Télécharger les commandes (CSV)</button>
+                </div>
+            </div>
+            <div id="admin-form" class="admin-box" style="display:none">
+                <h3>Ajouter une bougie</h3>
+                <input type="text" id="adm-nom" placeholder="Nom de la bougie">
+                <input type="text" id="adm-parfum" placeholder="Parfum (ex. Vanille, Ambre)">
+                <input type="number" id="adm-prix" placeholder="Prix en FCFA (ex. 30000)" inputmode="numeric">
+                <input type="file" id="adm-photo" accept="image/*" onchange="previewPhoto(this)">
+                <img id="adm-preview" class="admin-preview" alt="">
+                <button class="admin-btn" id="adm-save" onclick="addProduct()">Enregistrer et analyser la photo</button>
+                <div class="admin-status" id="adm-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="navigate('gallery', 'Galerie', 'Découvrez nos bougies d\'exception', this)">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <span>Galerie</span>
+        </button>
+        <button class="nav-item" onclick="navigate('orders', 'Commandes', 'Suivez vos commandes en direct', this)">
+            <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            <span>Commandes</span>
+        </button>
+        <button class="nav-item" onclick="navigate('ai', 'Agent IA', 'Votre assistant sensoriel personnalisé', this)">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <span>Agent IA</span>
+        </button>
+        <button class="nav-item" onclick="navigate('admin', 'Espace vendeur', 'Gérez vos bougies et vos photos', this)">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            <span>Vendeur</span>
+        </button>
+    </nav>
+
+    <div id="order-modal" class="modal" style="display:none">
+        <div class="admin-box modal-box">
+            <h3 id="order-title">Commander</h3>
+            <input type="text" id="ord-nom" placeholder="Votre nom">
+            <input type="tel" id="ord-tel" placeholder="Téléphone / WhatsApp">
+            <input type="text" id="ord-adresse" placeholder="Ville / quartier de livraison">
+            <input type="number" id="ord-qte" value="1" min="1" inputmode="numeric">
+            <button class="admin-btn" id="ord-send" onclick="submitOrder()">Confirmer la commande</button>
+            <button class="period-btn" onclick="closeOrder()">Fermer</button>
+            <div class="admin-status" id="ord-status"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---- Configuration ----
+    const SUPABASE_URL = 'https://kwcmxthjejrnnpxrrdgc.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_hCLAcLegbxcn0w3F3YnWKw_alrd9Zs6';
+
+    // URL de ton proxy sécurisé (ex. Supabase Edge Function) qui appelle Groq
+    // avec la clé stockée côté serveur. Tant qu'elle est vide, le chat
+    // affiche un message de repli.
+    const CHAT_PROXY_URL = 'https://kwcmxthjejrnnpxrrdgc.supabase.co/functions/v1/chat-proxy';
+    // Clé publique (anon) : elle sert seulement à autoriser l'appel de la fonction, la clé Groq reste côté serveur
+    const CHAT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3Y214dGhqZWpybm5weHJyZGdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMTU0NzIsImV4cCI6MjEwNjg5MTQ3Mn0.nmmQKT-3A-Yg35C0NVQD3LQbfvq7ok26VKA2E4sb4zc';
+    function proxyHeaders() {
+        return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CHAT_ANON_KEY, 'apikey': CHAT_ANON_KEY };
+    }
+
+    const fallbackProducts = [
+        { id: 1, nom: "Bougie Ambre Étoilé", parfum: "Ambre chaud, Cèdre", prix: 30000, stock: "En stock" },
+        { id: 2, nom: "Lumière de Vanille", parfum: "Vanille noire Bourbon", prix: 40000, stock: "Derniers exemplaires" },
+        { id: 3, nom: "Fleur de Cèdre", parfum: "Aiguilles de pin & Cèdre", prix: 25000, stock: "En stock" },
+        { id: 4, nom: "Douceur du Soir", parfum: "Lavande & Fleur de coton", prix: 32000, stock: "En stock" }
+    ];
+
+    const fallbackOrders = [
+        { id: "12345", date: "24 septembre 2026", montant: 88500, created_at: "2026-09-24", statut: "En préparation" },
+        { id: "12344", date: "21 septembre 2026", montant: 58500, created_at: "2026-09-21", statut: "Expédiée" },
+        { id: "12343", date: "18 septembre 2026", montant: 73500, created_at: "2026-09-18", statut: "Livrée" }
+    ];
+
+    let currentCatalog = fallbackProducts;
+    let currentOrders = fallbackOrders;
+    let conversationHistory = [];
+
+    // Format prix en francs CFA (ex. 30 000 FCFA)
+    function fcfa(n) {
+        return Number(n).toLocaleString('fr-FR') + ' FCFA';
+    }
+
+    // ---- Mode hors connexion (application installable) ----
+    function updateOnlineBanner() {
+        document.getElementById('offline-banner').style.display = navigator.onLine ? 'none' : 'block';
+    }
+    window.addEventListener('online', updateOnlineBanner);
+    window.addEventListener('offline', updateOnlineBanner);
+    document.addEventListener('DOMContentLoaded', updateOnlineBanner);
+    window.addEventListener('load', () => {
+        if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+    });
+
+    // ---- Installation sur l'écran d'accueil ----
+    let deferredPrompt = null;
+    const installBar = document.getElementById('install-bar');
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (!isStandalone) installBar.style.display = 'flex';
+    });
+
+    document.getElementById('install-btn').addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        try { await deferredPrompt.userChoice; } catch (e) {}
+        deferredPrompt = null;          // l'événement ne peut servir qu'une fois
+        installBar.style.display = 'none';
+    });
+
+    window.addEventListener('appinstalled', () => {
+        deferredPrompt = null;
+        installBar.style.display = 'none';
+    });
+
+    // ---- Sauvegarde locale + commandes ----
+    function cacheSave(k, v) { try { localStorage.setItem('lc_' + k, JSON.stringify(v)); } catch (e) {} }
+    function cacheLoad(k) { try { return JSON.parse(localStorage.getItem('lc_' + k)); } catch (e) { return null; } }
+
+    // Accepte les deux schémas de colonnes (prix/prix_cfa, image_url/image, description_ia/style_visuel)
+    function norm(p) {
+        return { ...p, prix: p.prix ?? p.prix_cfa, image_url: p.image_url || p.image, description_ia: p.description_ia || p.style_visuel };
+    }
+
+    // Affiche le dernier catalogue connu si le réseau est lent ou coupé
+    function loadCachedCatalog() {
+        const cached = cacheLoad('catalog');
+        if (cached && cached.length) { currentCatalog = cached; renderProducts(cached); }
+    }
+
+    let orderProduct = null;
+    function openOrder(p) {
+        orderProduct = p;
+        document.getElementById('order-title').textContent = p.nom + ' - ' + fcfa(p.prix || 30000);
+        document.getElementById('ord-status').textContent = '';
+        document.getElementById('ord-send').disabled = false;
+        document.getElementById('order-modal').style.display = 'flex';
+    }
+    function closeOrder() { document.getElementById('order-modal').style.display = 'none'; }
+
+    async function sendOrder(o) {
+        try {
+            const { error } = await getClient().from('commandes').insert(o);
+            return !error || error.code === '23505'; // 23505 : déjà enregistrée
+        } catch (e) { return false; }
+    }
+
+    async function submitOrder() {
+        const st = document.getElementById('ord-status');
+        const nom = document.getElementById('ord-nom').value.trim();
+        const tel = document.getElementById('ord-tel').value.trim();
+        const qte = Math.max(1, parseInt(document.getElementById('ord-qte').value, 10) || 1);
+        if (!nom || !tel) { st.textContent = 'Nom et téléphone requis.'; return; }
+        document.getElementById('ord-send').disabled = true;
+
+        const order = {
+            numero_commande: 'LC-' + Date.now().toString(36).toUpperCase(),
+            created_at: new Date().toISOString(),
+            client_nom: nom, client_tel: tel,
+            adresse: document.getElementById('ord-adresse').value.trim(),
+            produit: orderProduct.nom, quantite: qte,
+            montant_total: (Number(orderProduct.prix) || 0) * qte,
+            statut: 'En attente'
+        };
+        if (await sendOrder(order)) {
+            st.textContent = 'Commande ' + order.numero_commande + ' enregistrée. Nous vous contactons très vite !';
+        } else {
+            // Hors connexion : on garde la commande sur le téléphone et on la renvoie automatiquement
+            cacheSave('pending', (cacheLoad('pending') || []).concat(order));
+            st.textContent = 'Commande ' + order.numero_commande + ' gardée sur votre téléphone : elle sera envoyée dès que la connexion revient.';
+        }
+    }
+
+    async function flushPendingOrders() {
+        const queue = cacheLoad('pending') || [];
+        if (!queue.length) return;
+        const left = [];
+        for (const o of queue) { if (!(await sendOrder(o))) left.push(o); }
+        cacheSave('pending', left);
+    }
+
+    function exportOrders() {
+        const note = document.getElementById('dash-note');
+        if (!dashReal) { note.textContent = 'Aucune vraie commande à exporter pour le moment.'; return; }
+        const cols = ['numero_commande', 'created_at', 'client_nom', 'client_tel', 'adresse', 'produit', 'quantite', 'montant_total', 'statut'];
+        const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+        const csv = '\ufeff' + cols.join(';') + '\n' + dashOrders.map(r => cols.map(c => q(r[c])).join(';')).join('\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        a.download = 'commandes-luxury-candle.csv';
+        a.click();
+    }
+
+    // ---- Conversion de devises (les prix sont stockés en FCFA) ----
+    let currency = 'XOF';
+    // Taux de secours (1 FCFA = x devise) ; mis à jour en direct si le réseau le permet.
+    let rates = { XOF: 1, EUR: 1 / 655.957, USD: 0.00175, GBP: 0.00131, CAD: 0.00244 };
+
+    async function initCurrency() {
+        try {
+            const saved = localStorage.getItem('currency');
+            if (saved && rates[saved]) currency = saved;
+        } catch (e) {}
+        document.getElementById('currency-select').value = currency;
+        try {
+            const res = await fetch('https://open.er-api.com/v6/latest/XOF');
+            const data = await res.json();
+            if (data.result === 'success') {
+                Object.keys(rates).forEach(c => { if (data.rates && data.rates[c]) rates[c] = data.rates[c]; });
+                rates.EUR = 1 / 655.957; // parité fixe FCFA/euro
+            }
+        } catch (e) {}
+        refreshPrices();
+    }
+
+    function changeCurrency(c) {
+        currency = c;
+        try { localStorage.setItem('currency', c); } catch (e) {}
+        refreshPrices();
+    }
+
+    function refreshPrices() {
+        renderProducts(currentCatalog);
+        renderOrders(currentOrders);
+    }
+
+    // Prix affiché au client, dans la devise choisie
+    function price(n) {
+        if (currency === 'XOF') return fcfa(n);
+        return '≈ ' + new Intl.NumberFormat('fr-FR', {
+            style: 'currency', currency, maximumFractionDigits: 2
+        }).format(Number(n) * rates[currency]);
+    }
+
+    // Échappe le HTML pour éviter l'injection depuis la base de données
+    function esc(value) {
+        return String(value ?? '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        renderProducts(fallbackProducts);
+        renderOrders(fallbackOrders);
+        initCurrency();
+        restoreSession();
+        loadCachedCatalog();
+        flushPendingOrders();
+        window.addEventListener('online', flushPendingOrders);
+        initSupabaseSync();
+    });
+
+    function navigate(viewId, title, desc, element) {
+        document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`view-${viewId}`).classList.add('active');
+        element.classList.add('active');
+        document.getElementById('screen-title').textContent = title;
+        document.getElementById('screen-desc').textContent = desc;
+    }
+
+    function renderProducts(items) {
+        const container = document.getElementById("gallery-container");
+        container.innerHTML = "";
+        items.forEach(p => {
+            const card = document.createElement("div");
+            card.className = "product-card";
+            card.innerHTML = `
+                <div>
+                    ${p.image_url ? `<img class="product-img" loading="lazy" src="${esc(p.image_url)}" alt="${esc(p.nom)}">` : ''}
+                    <div class="product-badge">${esc(p.stock || 'En stock')}</div>
+                    <div class="product-name">${esc(p.nom)}</div>
+                    <div class="product-scent">${esc(p.parfum || p.parfum_principal || 'Fragrance artisanale')}</div>
+                </div>
+                <div class="product-bottom">
+                    <span class="product-price">${esc(price(p.prix || 30000))}</span>
+                    <button class="btn-buy">Acheter</button>
+                </div>`;
+            card.querySelector(".btn-buy").addEventListener("click", () => {
+                openOrder(p);
+            });
+            container.appendChild(card);
+        });
+    }
+
+    function renderOrders(orders) {
+        const container = document.getElementById("orders-container");
+        container.innerHTML = orders.map(o => `
+            <div class="order-item">
+                <div class="order-top">
+                    <span class="order-ref">Commande #${esc(o.numero_commande || o.id)}</span>
+                    <span class="order-pill">${esc(o.statut)}</span>
+                </div>
+                <div class="order-date">📅 ${esc(o.date || (o.created_at ? new Date(o.created_at).toLocaleDateString('fr-FR') : 'Date récente'))}</div>
+                <div class="order-total">Total: ${esc(price(o.montant_total || o.montant))}</div>
+            </div>
+        `).join('');
+    }
+
+    async function initSupabaseSync() {
+        if (!window.supabase) return;
+        try {
+            const client = getClient();
+            const { data: prods, error: pErr } = await client.from('produits').select('*');
+            if (!pErr && prods && prods.length > 0) {
+                currentCatalog = prods.map(norm);
+                cacheSave('catalog', currentCatalog);
+                renderProducts(currentCatalog);
+            }
+            const { data: ords, error: oErr } = await client.from('commandes').select('*');
+            if (!oErr && ords && ords.length > 0) {
+                currentOrders = ords;
+                renderOrders(ords);
+            }
+        } catch (e) {
+            console.log("Mode local actif.");
+        }
+    }
+
+    // ---- Tableau de bord des ventes ----
+    let dashOrders = [];
+    let dashReal = false;
+    let dashPeriod = 30;
+
+    function orderDate(o) {
+        const d = new Date(o.created_at || o.date_iso);
+        return isNaN(d) ? null : d;
+    }
+    function orderAmount(o) { return Number(o.montant_total || o.montant) || 0; }
+
+    async function loadDashboard() {
+        let data = null, error = null;
+        try {
+            const client = getClient();
+            if (client) ({ data, error } = await client.from('commandes').select('*'));
+            else error = new Error('offline');
+        } catch (e) { error = e; }
+        const real = !error && data && data.length > 0;
+        dashOrders = real ? data : fallbackOrders;
+        dashReal = real;
+        document.getElementById('dash-note').textContent = real ? '' : 'Données de démonstration : aucune commande enregistrée pour le moment.';
+        renderDashboard();
+    }
+
+    function setPeriod(days, btn) {
+        dashPeriod = days;
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b === btn));
+        renderDashboard();
+    }
+
+    function renderDashboard() {
+        const monthly = dashPeriod === 0;
+        const end = new Date(); end.setHours(23, 59, 59, 999);
+        const start = new Date(monthly ? 0 : end.getTime() - dashPeriod * 86400000);
+        const list = dashOrders.filter(o => { const d = orderDate(o); return d && d >= start && d <= end; });
+
+        const total = list.reduce((sum, o) => sum + orderAmount(o), 0);
+        document.getElementById('kpi-ca').textContent = price(total);
+        document.getElementById('kpi-n').textContent = list.length;
+        document.getElementById('kpi-avg').textContent = price(list.length ? total / list.length : 0);
+
+        // Ventes dans le temps : par jour (7/30 j) ou par mois (tout)
+        const buckets = new Map();
+        if (!monthly) {
+            for (let i = dashPeriod - 1; i >= 0; i--) {
+                const d = new Date(end); d.setDate(d.getDate() - i);
+                buckets.set(d.toISOString().slice(0, 10), 0);
+            }
+        }
+        list.forEach(o => {
+            const iso = orderDate(o).toISOString();
+            const key = monthly ? iso.slice(0, 7) : iso.slice(0, 10);
+            buckets.set(key, (buckets.get(key) || 0) + orderAmount(o));
+        });
+        let entries = [...buckets.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1);
+        if (monthly) entries = entries.slice(-12);
+
+        const sales = document.getElementById('chart-sales');
+        if (!list.length) {
+            sales.innerHTML = '<div class="chart-empty">Aucune vente sur cette période.</div>';
+        } else {
+            const W = 300, H = 120;
+            const max = Math.max(1, ...entries.map(e => e[1]));
+            const bw = W / entries.length;
+            const lab = k => monthly ? k.slice(5, 7) + '/' + k.slice(0, 4) : k.slice(8, 10) + '/' + k.slice(5, 7);
+            let svg = `<svg viewBox="0 0 ${W} ${H + 18}" width="100%" role="img" aria-label="Ventes dans le temps">`;
+            svg += `<line x1="0" y1="${H}" x2="${W}" y2="${H}" stroke="#333"/>`;
+            entries.forEach(([k, v], i) => {
+                const h = v > 0 ? Math.max(2, (v / max) * H) : 0;
+                svg += `<rect x="${i * bw + 1}" y="${H - h}" width="${Math.max(1, bw - 2)}" height="${h}" rx="2" fill="#d4a574"><title>${esc(lab(k))} : ${esc(price(v))}</title></rect>`;
+            });
+            svg += `<text x="0" y="${H + 14}" fill="#999" font-size="9">${lab(entries[0][0])}</text>`;
+            svg += `<text x="${W}" y="${H + 14}" fill="#999" font-size="9" text-anchor="end">${lab(entries[entries.length - 1][0])}</text></svg>`;
+            sales.innerHTML = svg + `<div class="chart-empty" style="padding:4px 0 0">Meilleure période : ${esc(price(max))}</div>`;
+        }
+
+        // Commandes par statut
+        const counts = {};
+        list.forEach(o => { const st = o.statut || 'Inconnu'; counts[st] = (counts[st] || 0) + 1; });
+        const maxC = Math.max(1, ...Object.values(counts));
+        document.getElementById('chart-status').innerHTML = list.length
+            ? Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([st, c]) =>
+                `<div class="stat-row"><span>${esc(st)}</span><div class="stat-bar"><div style="width:${(c / maxC) * 100}%"></div></div><b>${c}</b></div>`).join('')
+            : '<div class="chart-empty">Aucune commande sur cette période.</div>';
+    }
+
+    function showAdmin() {
+        document.getElementById('admin-login').style.display = 'none';
+        document.getElementById('admin-form').style.display = 'flex';
+        document.getElementById('admin-dashboard').style.display = 'block';
+        loadDashboard();
+    }
+
+    async function restoreSession() {
+        const client = getClient();
+        if (!client) return;
+        try {
+            const { data } = await client.auth.getSession();
+            if (data && data.session) showAdmin();
+        } catch (e) {}
+    }
+
+    // ---- Espace vendeur : photos ----
+    let sb = null;
+    const PHOTO_BUCKET = 'bougies';
+    const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+
+    function getClient() {
+        if (!sb && window.supabase && typeof window.supabase.createClient === 'function') {
+            sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
+        return sb;
+    }
+
+    async function adminLogin() {
+        const st = document.getElementById('adm-login-status');
+        st.textContent = 'Connexion...';
+        if (!getClient()) { st.textContent = 'Connexion internet requise.'; return; }
+        const { error } = await getClient().auth.signInWithPassword({
+            email: document.getElementById('adm-email').value.trim(),
+            password: document.getElementById('adm-pass').value
+        });
+        if (error) {
+            const m = (error.message || '').toLowerCase();
+            st.textContent = m.includes('not confirmed') ? "E-mail non confirmé : confirme l'utilisateur dans Supabase."
+                : m.includes('invalid login') ? 'E-mail ou mot de passe incorrect, ou compte inexistant.'
+                : 'Erreur : ' + error.message;
+            return;
+        }
+        showAdmin();
+    }
+
+    function resizeImage(file, max = 900) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                const r = Math.min(1, max / Math.max(img.width, img.height));
+                const c = document.createElement('canvas');
+                c.width = Math.round(img.width * r);
+                c.height = Math.round(img.height * r);
+                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                c.toBlob(b => b ? resolve(b) : reject(new Error('Image illisible')), 'image/jpeg', 0.8);
+            };
+            img.onerror = () => reject(new Error('Image illisible'));
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
+    function blobToDataURL(blob) {
+        return new Promise(resolve => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result);
+            fr.readAsDataURL(blob);
+        });
+    }
+
+    function previewPhoto(input) {
+        const prev = document.getElementById('adm-preview');
+        if (input.files[0]) {
+            prev.src = URL.createObjectURL(input.files[0]);
+            prev.style.display = 'block';
+        }
+    }
+
+    // L'IA décrit la photo une seule fois ; la description est stockée et sert au conseiller
+    async function describeImage(dataUrl) {
+        if (!CHAT_PROXY_URL) return '';
+        const res = await fetch(CHAT_PROXY_URL, {
+            method: 'POST',
+            headers: proxyHeaders(),
+            body: JSON.stringify({
+                model: VISION_MODEL,
+                max_tokens: 150,
+                messages: [{ role: 'user', content: [
+                    { type: 'text', text: "Décris en français, en 2 phrases, cette bougie : couleur, contenant, style, ambiance et pièce idéale." },
+                    { type: 'image_url', image_url: { url: dataUrl } }
+                ]}]
+            })
+        });
+        if (!res.ok) return '';
+        const data = await res.json();
+        return data.choices?.[0]?.message?.content || '';
+    }
+
+    async function addProduct() {
+        const st = document.getElementById('adm-status');
+        const btn = document.getElementById('adm-save');
+        const nom = document.getElementById('adm-nom').value.trim();
+        const parfum = document.getElementById('adm-parfum').value.trim();
+        const prix = parseInt(document.getElementById('adm-prix').value, 10);
+        const file = document.getElementById('adm-photo').files[0];
+        if (!nom || isNaN(prix) || !file) { st.textContent = 'Nom, prix et photo sont requis.'; return; }
+
+        btn.disabled = true;
+        try {
+            const client = getClient();
+            st.textContent = 'Envoi de la photo...';
+            const blob = await resizeImage(file);
+            const path = Date.now() + '.jpg';
+            const up = await client.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: 'image/jpeg' });
+            if (up.error) throw up.error;
+            const image_url = client.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+
+            st.textContent = "Analyse de la photo par l'IA...";
+            let description_ia = '';
+            try { description_ia = await describeImage(await blobToDataURL(blob)); } catch (e) {}
+
+            const ins = await client.from('produits').insert({ nom, parfum, prix, stock: 'En stock', image_url, description_ia });
+            if (ins.error) throw ins.error;
+
+            st.textContent = description_ia ? 'Bougie ajoutée. Description IA : ' + description_ia : 'Bougie ajoutée (sans analyse IA : proxy non configuré).';
+            ['adm-nom', 'adm-parfum', 'adm-prix', 'adm-photo'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('adm-preview').style.display = 'none';
+            initSupabaseSync();
+        } catch (e) {
+            st.textContent = 'Erreur : ' + (e.message || 'envoi impossible');
+        }
+        btn.disabled = false;
+    }
+
+    async function handleUserMessage() {
+        const input = document.getElementById("chat-input");
+        const msg = input.value.trim();
+        if (!msg) return;
+
+        const messagesBox = document.getElementById("chat-messages");
+
+        const userBubble = document.createElement("div");
+        userBubble.className = "chat-bubble user";
+        userBubble.textContent = msg;
+        messagesBox.appendChild(userBubble);
+        input.value = "";
+        messagesBox.scrollTop = messagesBox.scrollHeight;
+
+        conversationHistory.push({ role: "user", content: msg });
+
+        const promptSystem = `Tu es le conseiller et sommelier en bougies parfumées de la maison 'Luxury Candle'.
+Voici notre collection :
+${currentCatalog.map(p => `- ${p.nom} (${fcfa(p.prix || 30000)}) : ${p.parfum || p.parfum_principal || 'Parfum raffiné'}${p.description_ia ? ' | Apparence (d\'après la photo) : ' + p.description_ia : ''}`).join('\n')}
+Les prix sont en francs CFA (FCFA), la boutique est au Togo. Le client peut afficher les prix dans une autre devise : cite toujours le prix en FCFA.\nConseille avec élégance, raffinement et concision en français.`;
+
+        const loader = document.createElement("div");
+        loader.className = "chat-bubble ai";
+        loader.textContent = "Recherche de la fragrance idéale...";
+        messagesBox.appendChild(loader);
+        messagesBox.scrollTop = messagesBox.scrollHeight;
+
+        try {
+            if (!CHAT_PROXY_URL) throw new Error("Proxy non configuré");
+
+            const res = await fetch(CHAT_PROXY_URL, {
+                method: "POST",
+                headers: proxyHeaders(),
+                body: JSON.stringify({
+                    model: "llama-3.3-70b-versatile",
+                    messages: [
+                        { role: "system", content: promptSystem },
+                        ...conversationHistory
+                    ],
+                    max_tokens: 300,
+                    temperature: 0.7
+                })
+            });
+
+            if (!res.ok) throw new Error("Erreur réseau API");
+
+            const data = await res.json();
+            const reply = data.choices[0].message.content;
+            loader.textContent = reply;
+            conversationHistory.push({ role: "assistant", content: reply });
+        } catch (err) {
+            loader.textContent = "Je reste à votre service pour vous orienter parmi nos créations (Ambre Étoilé, Lumière de Vanille, Fleur de Cèdre, Douceur du Soir).";
+        }
+        messagesBox.scrollTop = messagesBox.scrollHeight;
+    }
+
+    document.getElementById("chat-input").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") handleUserMessage();
+    });
+</script>
+
+</body>
+</html>

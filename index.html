@@ -465,27 +465,23 @@
             created_at: new Date().toISOString(),
             client_nom: nom, client_tel: tel,
             adresse: document.getElementById('ord-adresse').value.trim(),
-            produit: orderProduct.nom, quantite: qte,
-            montant_total: (Number(orderProduct.prix) || 0) * qte,
-            statut: 'En attente'
-        };
-        if (await sendOrder(order)) {
-            st.textContent = 'Commande ' + order.numero_commande + ' enregistrée. Nous vous contactons très vite !';  
-          window.location.href = `https://wa.me/22897901762?text=${encodeURIComponent('*COMMANDE ' + order.numero_commande + '*\n' + order.produit + ' (x' + order.quantite + ')\nTotal: ' + order.montant_total + ' FCFA\nNom: ' + order.client_nom + '\nTel: ' + order.client_tel + '\nAdresse: ' + order.adresse)}`;
-                
-        } else {
-            // Hors connexion : on garde la commande sur le téléphone et on la renvoie automatiquement
-            cacheSave('pending', (cacheLoad('pending') || []).concat(order));
-            st.textContent = 'Commande ' + order.numero_commande + ' gardée sur votre téléphone : elle sera envoyée dès que la connexion revient.';
-        }
-    }
+            p
+            };
 
-    async function flushPendingOrders() {
-        const queue = cacheLoad('pending') || [];
-        if (!queue.length) return;
-        const left = [];
-        for (const o of queue) { if (!(await sendOrder(o))) left.push(o); }
-        cacheSave('pending', left);
+    // Redirection immédiate vers votre numéro WhatsApp
+    const msgWA = `*COMMANDE ${order.numero_commande}*\n${order.produit} (x${order.quantite})\nTotal: ${order.montant_total} FCFA\nNom: ${order.client_nom}\nTel: ${order.client_tel}\nAdresse: ${order.adresse}`;
+    window.location.href = `https://wa.me/22897901762?text=${encodeURIComponent(msgWA)}`;
+
+    if (await sendOrder(order)) {
+        st.textContent = 'Commande ' + order.numero_commande + ' enregistrée.';
+    } else {
+        cacheSave('pending', (cacheLoad('pending') || []).concat(order));
+        st.textContent = 'Commande ' + order.numero_commande + ' gardée sur votre téléphone.';
+    }
+}
+
+async function flushPendingOrders() {
+    
     }
 
     function exportOrders() {

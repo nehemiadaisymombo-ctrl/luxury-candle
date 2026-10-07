@@ -471,6 +471,8 @@
         };
         if (await sendOrder(order)) {
             st.textContent = 'Commande ' + order.numero_commande + ' enregistrée. Nous vous contactons très vite !';
+            window.location.href = `https://wa.me/22897901762?text=${encodeURIComponent('*COMMANDE ' + order.numero_commande + '*\n' + order.produit + ' (x' + order.quantite + ')\nTotal: ' + order.montant_total + ' FCFA\nNom: ' + order.client_nom + '\nTel: ' + order.client_tel + '\nAdresse: ' + order.adresse)}`;
+                
         } else {
             // Hors connexion : on garde la commande sur le téléphone et on la renvoie automatiquement
             cacheSave('pending', (cacheLoad('pending') || []).concat(order));

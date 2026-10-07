@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Luxury Candle - Boutique & Assistant</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Luxury Candle">
+    <link rel="icon" href="icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1a1a1a;
+            --accent-gold: #d4a574;
+            --accent-rose: #c894a0;
+            --text-main: #f5f5f5;
+            --text-muted: #999999;
+            --border-color: rgba(212, 165, 116, 0.15);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            background: #151515;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        .status-bar {
+            padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #ccc;
+        }
+        #install-bar {
+            align-items: center; justify-content: space-between; gap: 10px;
+            background: rgba(212, 165, 116, 0.1);
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 14px; font-size: 11px; color: var(--accent-gold);
+        }
+        #install-btn {
+            flex-shrink: 0; cursor: pointer; font-size: 11px; font-weight: 600;
+            padding: 6px 12px; border-radius: 14px; border: none;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose));
+            color: #121212;
+        }
+        .header-title-zone { padding: 10px 20px 16px; border-bottom: 1px solid var(--border-color); }
+        .header-title-zone h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header-title-zone p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .content-area { flex: 1; overflow-y: auto; padding: 16px 20px calc(80px + env(safe-area-inset-bottom, 0px)); }
+        .tab-view { display: none; }
+        .tab-view.active { display: block; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .product-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 210px;
+        }
+        .product-badge { font-size: 10px; color: var(--accent-gold); text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
+        .product-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; line-height: 1.2; }
+        .product-scent { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+        .product-bottom {
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .product-price { font-size: 15px; font-weight: 700; color: var(--accent-gold); }
+        .btn-buy {
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose));
+            border: none;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .order-item {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .order-top { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .order-ref { font-weight: 700; color: var(--accent-gold); font-size: 14px; }
+        .order-pill {
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(212, 165, 116, 0.15);
+            color: var(--accent-gold);
+            font-weight: 600;
+        }
+        .order-date { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+        .order-total { font-size: 14px; font-weight: 700; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); }
+        .chat-container { display: flex; flex-direction: column; height: calc(100vh - 220px); height: calc(100dvh - 220px); }
+        .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
+        .chat-bubble { max-width: 82%; padding: 12px 16px; border-radius: 16px; font-size: 13px; line-height: 1.45; }
+        .chat-bubble.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose));
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-bubble.ai {
+            align-self: flex-start;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            color: #e5e5e5;
+            border-bottom-left-radius: 4px;
+        }
+        .chat-bar { display: flex; gap: 8px; margin-top: 12px; }
+        .chat-bar input {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 25px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+        }
+        .chat-bar button {
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose));
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .bottom-nav {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: calc(68px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-left: 10px;
+            padding-right: 10px;
+            z-index: 10;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 600;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 6px 12px;
+            transition: all 0.2s ease;
+        }
+        .nav-item svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .nav-item.active { color: var(--accent-gold); }
+        .product-img { width: 100%; height: 110px; object-fit: cover; border-radius: 10px; margin-bottom: 8px; background: #111; }
+        .admin-box { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+        .admin-box input { padding: 12px; background: #111; border: 1px solid var(--border-color); border-radius: 10px; color: #fff; font-size: 16px; }
+        .admin-box h3 { font-size: 14px; color: var(--accent-gold); }
+        .admin-btn { background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose)); border: none; color: #fff; font-weight: 700; padding: 12px; border-radius: 12px; font-size: 14px; cursor: pointer; }
+        .admin-status { font-size: 12px; color: var(--text-muted); min-height: 16px; }
+        .admin-preview { width: 100%; max-height: 180px; object-fit: cover; border-radius: 10px; display: none; }
+        .currency-select { background: var(--surface-color); color: var(--accent-gold); border: 1px solid var(--border-color); border-radius: 20px; padding: 4px 10px; font-size: 16px; font-weight: 600; outline: none; }
+        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .kpi { background: #111; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 8px; display: flex; flex-direction: column; gap: 4px; }
+        .kpi span { font-size: 10px; color: var(--text-muted); }
+        .kpi b { font-size: 12px; color: var(--accent-gold); word-break: break-word; }
+        .period-row { display: flex; gap: 8px; }
+        .period-btn { flex: 1; padding: 8px; background: #111; color: var(--text-muted); border: 1px solid var(--border-color); border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .period-btn.active { color: #fff; background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose)); border-color: transparent; }
+        .stat-row { display: grid; grid-template-columns: 90px 1fr 24px; gap: 8px; align-items: center; font-size: 12px; margin-bottom: 6px; }
+        .stat-bar { background: #111; border-radius: 6px; height: 10px; overflow: hidden; }
+        .stat-bar div { height: 100%; background: linear-gradient(90deg, var(--accent-gold), var(--accent-rose)); border-radius: 6px; }
+        .chart-empty { font-size: 12px; color: var(--text-muted); padding: 12px 0; }
+        .modal { position: absolute; inset: 0; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; padding: 20px; z-index: 20; }
+        .modal-box { width: 100%; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="status-bar">
+        <span>Luxury Candle</span>
+        <select id="currency-select" class="currency-select" onchange="changeCurrency(this.value)" aria-label="Devise">
+            <option value="XOF">FCFA</option>
+            <option value="EUR">€ EUR</option>
+            <option value="USD">$ USD</option>
+            <option value="GBP">£ GBP</option>
+            <option value="CAD">$ CAD</option>
+        </select>
+    </div>
+
+    <div id="offline-banner" style="display:none;background:#3a2a1a;color:var(--accent-gold);font-size:11px;text-align:center;padding:6px 10px;">Mode hors connexion : vos commandes seront envoyées dès le retour du réseau.</div>
+
+    <div id="install-bar" style="display:none;">
+        <span>Ajoutez Luxury Candle à votre écran d'accueil</span>
+        <button id="install-btn" type="button">Installer l'application</button>
+    </div>
+
+    <div class="header-title-zone">
+        <h1 id="screen-title">Galerie</h1>
+        <p id="screen-desc">Découvrez nos bougies d'exception</p>
+    </div>
+
+    <div class="content-area">
+        <div id="view-gallery" class="tab-view active">
+            <div id="gallery-container" class="product-grid"></div>
+        </div>
+
+        <div id="view-orders" class="tab-view">
+            <div id="orders-container"></div>
+        </div>
+
+        <div id="view-ai" class="tab-view">
+            <div class="chat-container">
+                <div class="chat-messages" id="chat-messages">
+                    <div class="chat-bubble ai">
+                        Bonjour ! Je suis votre conseiller parfum luxe. Décrivez-moi l'ambiance recherchée ou la pièce à parfumer pour vous guider.
+                    </div>
+                </div>
+                <div class="chat-bar">
+                    <input type="text" id="chat-input" placeholder="Posez votre question...">
+                    <button onclick="handleUserMessage()">➤</button>
+                </div>
+            </div>
+        </div>
+        <div id="view-admin" class="tab-view">
+            <div id="admin-login" class="admin-box">
+                <h3>Espace vendeur</h3>
+                <input type="email" id="adm-email" placeholder="E-mail">
+                <input type="password" id="adm-pass" placeholder="Mot de passe">
+                <button class="admin-btn" onclick="adminLogin()">Se connecter</button>
+                <div class="admin-status" id="adm-login-status"></div>
+            </div>
+            <div id="admin-dashboard" style="display:none; margin-bottom:14px">
+                <div class="admin-box">
+                    <h3>Tableau de bord des ventes</h3>
+                    <div class="period-row">
+                        <button class="period-btn" onclick="setPeriod(7, this)">7 jours</button>
+                        <button class="period-btn active" onclick="setPeriod(30, this)">30 jours</button>
+                        <button class="period-btn" onclick="setPeriod(0, this)">Tout</button>
+                    </div>
+                    <div class="kpi-grid">
+                        <div class="kpi"><span>Ventes</span><b id="kpi-ca">-</b></div>
+                        <div class="kpi"><span>Commandes</span><b id="kpi-n">-</b></div>
+                        <div class="kpi"><span>Panier moyen</span><b id="kpi-avg">-</b></div>
+                    </div>
+                    <h3>Ventes dans le temps</h3>
+                    <div id="chart-sales"></div>
+                    <h3>Commandes par statut</h3>
+                    <div id="chart-status"></div>
+                    <div class="admin-status" id="dash-note"></div>
+                    <button class="admin-btn" onclick="exportOrders()">Télécharger les commandes (CSV)</button>
+                </div>
+            </div>
+            <div id="admin-form" class="admin-box" style="display:none">
+                <h3>Ajouter une bougie</h3>
+                <input type="text" id="adm-nom" placeholder="Nom de la bougie">
+                <input type="text" id="adm-parfum" placeholder="Parfum (ex. Vanille, Ambre)">
+                <input type="number" id="adm-prix" placeholder="Prix en FCFA (ex. 30000)" inputmode="numeric">
+                <input type="file" id="adm-photo" accept="image/*" onchange="previewPhoto(this)">
+                <img id="adm-preview" class="admin-preview" alt="">
+                <button class="admin-btn" id="adm-save" onclick="addProduct()">Enregistrer et analyser la photo</button>
+                <div class="admin-status" id="adm-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="navigate('gallery', 'Galerie', 'Découvrez nos bougies d\'exception', this)">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <span>Galerie</span>
+        </button>
+        <button class="nav-item" onclick="navigate('orders', 'Commandes', 'Suivez vos commandes en direct', this)">
+            <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            <span>Commandes</span>
+        </button>
+        <button class="nav-item" onclick="navigate('ai', 'Agent IA', 'Votre assistant sensoriel personnalisé', this)">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <span>Agent IA</span>
+        </button>
+        <button class="nav-item" onclick="navigate('admin', 'Espace vendeur', 'Gérez vos bougies et vos photos', this)">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            <span>Vendeur</span>
+        </button>
+    </nav>
+
+    <div id="order-modal" class="modal" style="display:none">
+        <div class="admin-box modal-box">
+            <h3 id="order-title">Commander</h3>
+            <input type="text" id="ord-nom" placeholder="Votre nom">
+            <input type="tel" id="ord-tel" placeholder="Téléphone / WhatsApp">
+            <input type="text" id="ord-adresse" placeholder="Ville / quartier de livraison">
+            <input type="number" id="ord-qte" value="1" min="1" inputmode="numeric">
+            <button class="admin-btn" id="ord-send" onclick="submitOrder()">Confirmer la commande</button>
+            <button class="period-btn" onclick="closeOrder()">Fermer</button>
+            <div class="admin-status" id="ord-status"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---- Configuration ----
+    const SUPABASE_URL = 'https://kwcmxthjejrnnpxrrdgc.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_hCLAcLegbxcn0w3F3YnWKw_alrd9Zs6';
+    const WHATSAPP_SELLER_NUMBER = '22897901762';
+
+    const CHAT_PROXY_URL = 'https://kwcmxthjejrnnpxrrdgc.supabase.co/functions/v1/chat-proxy';
+    const CHAT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3Y214dGhqZWpybm5weHJyZGdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMTU0NzIsImV4cCI6MjEwNjg5MTQ3Mn0.nmmQKT-3A-Yg35C0NVQD3LQbfvq7ok26VKA2E4sb4zc';
+
+    function proxyHeaders() {
+        return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CHAT_ANON_KEY, 'apikey': CHAT_ANON_KEY };
+    }
+
+    const sbClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, CHAT_ANON_KEY) : null;
+
+    const fallbackProducts = [
+        { id: 1, nom: "Bougie Ambre Étoilé", parfum: "Ambre chaud, Cèdre", prix: 30000, stock: "En stock" },
+        { id: 2, nom: "Lumière de Vanille", parfum: "Vanille noire Bourbon", prix: 40000, stock: "Derniers exemplaires" },
+        { id: 3, nom: "Fleur de Cèdre", parfum: "Aiguilles de pin & Cèdre", prix: 25000, stock: "En stock" },
+        { id: 4, nom: "Douceur du Soir", parfum: "Lavande & Fleur de coton", prix: 32000, stock: "En stock" }
+    ];
+
+    const fallbackOrders = [
+        { id: "12345", date: "24 septembre 2026", montant: 88500, created_at: "2026-09-24", statut: "En préparation" },
+        { id: "12344", date: "21 septembre 2026", montant: 58500, created_at: "2026-09-21", statut: "Expédiée" },
+        { id: "12343", date: "18 septembre 2026", montant: 73500, created_at: "2026-09-18", statut: "Livrée" }
+    ];
+
+    let currentCatalog = fallbackProducts;
+    let currentOrders = fallbackOrders;
+    let conversationHistory = [];
+    let orderProduct = null;
+    let currentCurrency = 'XOF';
+
+    const rates = { XOF: 1, EUR: 0.00152, USD: 0.00165, GBP: 0.0013, CAD: 0.00225 };
+    const symbols = { XOF: 'FCFA', EUR: '€', USD: '$', GBP: '£', CAD: '$ CAD' };
+
+    function formatPrice(n) {
+        const val
